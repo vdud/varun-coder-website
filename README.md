@@ -1,56 +1,40 @@
-# Sveltekit-Reown-Ethers
+# sv
 
-<a name="readme-top"></a>
+Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
+## Creating a project
 
-A more opinionated, but barebones front end Sveltekit web3 template using some of my favorite technologies, some might even say the best Sveltekit-web3 template.
+If you're seeing this, you've probably already done this step. Congrats!
 
-sveltekit-reown-ethers is the lovechild of the ['create-skeleton-app'](https://www.skeleton.dev/docs/get-started/installation/sveltekit) command and the [demo example provided by Reown (formerly WalletConnect)](https://github.com/reown-com/appkit/tree/main/examples/sveltekit-wagmi).
+```sh
+# create a new project in the current directory
+npx sv create
 
-<p align="center">
-   <img src="./src/lib/assets/sveltekit-reown-ethers.png" alt="skelekit-wagmiconnect desktop" >
-</p>
+# create a new project in my-app
+npx sv create my-app
+```
 
-If you fork this repo and like it, maybe give it a star so other Sveltekit devs can see it when they search 'web3 sveltekit'. If you have meaningful contributions to add, I am happy to merge them.
+## Developing
 
-The main differences between this repo and [the older sveltekit repo I created](https://github.com/Elliott-Green/sveltekit-reown-ethers) are the following upgrades:
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
-- Svelte v4 -> v5
-- Skeleton v2 -> v3
-- Tailwind v3 -> v4
-- Wagmi v2 -> Ethers v6
-- web3modal -> reown
+```sh
+npm run dev
 
-I found when trying to build this with the reown wagmi example, the `writeContract` method would never find the correct provider, if this has been solved, then let me know and I will link your repo here.
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
 
-## Contributions + to-do-list
+## Building
 
-- Mobile fixes to Nav & `./+page.svelte`
-- SEO
-- PWA
-  
-## Contact
+To create a production version of your app:
 
-Elliott Green - [@cryptonines](https://twitter.com/cryptonines)
+```sh
+npm run build
+```
 
-Project Link: [https://github.com/Elliott-Green/sveltekit-reown-ethers](https://github.com/Elliott-Green/sveltekit-reown-ethers)
+You can preview the production build with `npm run preview`.
 
-This repository superceeds my previous opensource Sveltekit web3 UI learning efforts [archived here](https://github.com/reown-com/appkit/tree/main/examples/sveltekit-wagmi) and [here](https://github.com/Elliott-Green/SveltekitXSkeletonXEthers).
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-[contributors-shield]: https://img.shields.io/github/contributors/Elliott-Green/sveltekit-reown-ethers.svg?style=for-the-badge
-[contributors-url]: https://github.com/Elliott-Green/sveltekit-reown-ethers/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/Elliott-Green/sveltekit-reown-ethers.svg?style=for-the-badge
-[forks-url]: https://github.com/Elliott-Green/sveltekit-reown-ethers/network/members
-[stars-shield]: https://img.shields.io/github/stars/Elliott-Green/sveltekit-reown-ethers.svg?style=for-the-badge
-[stars-url]: https://github.com/Elliott-Green/sveltekit-reown-ethers/stargazers
-[issues-shield]: https://img.shields.io/github/issues/Elliott-Green/sveltekit-reown-ethers.svg?style=for-the-badge
-[issues-url]: https://github.com/Elliott-Green/sveltekit-reown-ethers/issues
-[license-shield]: https://img.shields.io/github/license/Elliott-Green/sveltekit-reown-ethers.svg?style=for-the-badge
-[license-url]: https://github.com/Elliott-Green/sveltekit-reown-ethers/blob/main/LICENCE
+# varun-coder-website

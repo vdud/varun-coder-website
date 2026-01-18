@@ -1,116 +1,33 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
-	import { modal } from '$lib/appkit';
+	import confetti from 'canvas-confetti';
+	import WalletConnect from '$lib/components/WalletConnectClient.svelte';
 	import { accountState, networkState, appKitState, events, walletInfo } from '$lib/store';
-	import { ethers } from 'ethers';
-	import type { ContractRunner } from 'ethers';
 
-	// List of contract addresses X chains
-	const usdcAddresses = [
-		{
-			chainId: 42161, // Arbitrum One Mainnet
-			address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'
-		},
-		{
-			chainId: 1, // Ethereum Mainnet
-			address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
-		},
-		{
-			chainId: 10, // Optimism Mainnet
-			address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85'
-		},
-		{
-			chainId: 137, // Polygon PoS Mainnet
-			address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'
-		},
-		{
-			chainId: 17000, // Holesky Testnet
-			address: '0x449CDe79f489E2Ae32E6314d8D966CA64e040409'
-		}
-	];
+	import { Github, Linkedin, Twitter } from '@lucide/svelte';
 
-	// A simplified ERC20 ABI.
-	const usdcAbi = [
-		'function name() view returns (string)',
-		'function symbol() view returns (string)',
-		'function decimals() view returns (uint8)',
-		'function totalSupply() view returns (uint256)',
-		'function approve(address spender, uint256 amount) public returns (bool)'
-	];
+	import { modal } from '$lib/appkit';
 
-	// Stores to store read data
-	let name = writable<string>();
-	let symbol = writable<string>();
-	let decimals = writable<number>();
-	let totalSupply = writable<string>();
-	// Stores to store the pending and error states
-	let loading = writable<boolean>(false);
+	let theme = $state<'light' | 'dark' | 'system'>('system');
+	let resolvedTheme = $state<'light' | 'dark'>('dark');
 
-	// Stores the current USDC address for a dyanmic chainId
-	let USDCAddressForChainID: string;
-	$: USDCAddressForChainID = usdcAddresses.find(
-		(x) => x?.chainId === $networkState?.chainId
-	)?.address;
-
-	// Stores the current chainId in a seperate variable
-	let currentNetworkID: Number;
-	$: currentNetworkID = 0;
-	// Subscribe to new connections and when the chainId changes.
-	$: if ($accountState?.isConnected && $networkState?.chainId !== currentNetworkID) {
-		console.log(`new connection or network changed, refetching state...`);
-		readUSDC();
+	function triggerConfetti() {
+		const colors = ['#06b6d4', '#8b5cf6'];
+		confetti({
+			particleCount: 100,
+			spread: 70,
+			origin: { y: 0.6 },
+			colors
+		});
 	}
 
-	// When the chainId changes or is initialized then this method fetches USDC data
-	async function readUSDC() {
-		try {
-			loading.set(true);
+	onMount(() => {
+		const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
+		theme = savedTheme || 'system';
+		updateTheme();
 
-			// Get EIP-1193 provider from modal
-			const eip1193Provider = (await modal?.getProvider?.(
-				'eip155'
-			)) as import('ethers').Eip1193Provider;
-			if (!eip1193Provider) throw new Error('No provider from modal');
+		console.log('modal', modal);
 
-			const provider = new ethers.BrowserProvider(eip1193Provider);
-			const contract = new ethers.Contract(USDCAddressForChainID, usdcAbi, provider);
-
-			name.set(await contract.name());
-			symbol.set(await contract.symbol());
-			decimals.set(await contract.decimals());
-			totalSupply.set(ethers.formatUnits(await contract.totalSupply(), await contract.decimals()));
-		} catch (e: string) {
-			console.error('Error reading token:', e);
-		} finally {
-			loading.set(false);
-		}
-	}
-
-	// @dev: Removed reown theme, code left here as example to re-enable if wanted.
-	// // Only update theme in browser
-	// $: if (browser) {
-	// 	document.documentElement.setAttribute('data-theme', $themeState.themeMode);
-	// }
-
-	onMount(async () => {
-		// @dev: Removed reown theme, code left here as example to re-enable if wanted.
-		// Set initial theme in browser
-		// if (browser) {
-		// 	document.documentElement.setAttribute('data-theme', $themeState.themeMode);
-		// 	document.body.className = $themeState.themeMode;
-		// }
-
-		// @dev: Removed reown theme, code left here as example to re-enable if wanted.
-		// modal?.subscribeTheme((state) => {
-		// 	$themeState = state;
-		// 	if (browser) {
-		// 		document.documentElement.setAttribute('data-theme', state.themeMode);
-		// 		document.body.className = state.themeMode;
-		// 	}
-		// });
-
-		// @dev: Verbatim from reown
 		modal?.subscribeAccount((state) => {
 			$accountState = state;
 		});
@@ -131,190 +48,288 @@
 			$walletInfo = state;
 		});
 
-		// When the page is loaded with a default network, then this logic fires
-		currentNetworkID = $networkState.chainId;
-		await readUSDC();
+		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		mediaQuery.addEventListener('change', updateTheme);
+
+		// Listen for theme cycle events from layout
+		const handleThemeCycle = (e: Event) => {
+			const customEvent = e as CustomEvent;
+			theme = customEvent.detail.theme;
+			updateTheme();
+		};
+		window.addEventListener('theme-change', handleThemeCycle);
+
+		return () => {
+			mediaQuery.removeEventListener('change', updateTheme);
+			window.removeEventListener('theme-change', handleThemeCycle);
+		};
 	});
 
-	// @dev: Removed reown theme, code left here as example to re-enable if wanted.
-	// function toggleTheme() {
-	// 	const newTheme = themeState.themeMode === 'dark' ? 'light' : 'dark';
-	// 	modal?.setThemeMode(newTheme);
-	// 	$themeState = { ...$themeState, themeMode: newTheme };
-	// 	if (browser) {
-	// 		document.documentElement.setAttribute('data-theme', newTheme);
-	// 		document.body.className = newTheme;
-	// 	}
-	// }
-
-	// An arbitrary amount of USDC to approve
-	let approvalAmount = ethers.parseUnits('100', 6);
-	// Loader if the approval is ongoing
-	let approveLoading: boolean = false;
-	// Stores the transaction has of the approval
-	let approveTxHash: string | null = null;
-	//
-	let error: string = '';
-
-	// Performs an approval write operation on USDC contract
-	async function approveToken() {
-		loading.set(true);
-		approveTxHash = null;
-
-		try {
-			// Get signer from the modal (Reown)
-			if (!$accountState?.isConnected) return;
-			// Get EIP-1193 provider from modal
-			const eip1193Provider = (await modal?.getProvider?.(
-				'eip155'
-			)) as import('ethers').Eip1193Provider;
-			if (!eip1193Provider) throw new Error('No provider from modal');
-
-			const provider = new ethers.BrowserProvider(eip1193Provider);
-
-			const usdc = new ethers.Contract(USDCAddressForChainID, usdcAbi, await provider.getSigner());
-			const tx = await usdc.approve((await provider.getSigner()).address, approvalAmount);
-			console.log('Approval tx sent:', tx.hash);
-			approveTxHash = tx.hash;
-
-			await tx.wait();
-			console.log('Approval tx confirmed');
-			approveTxHash = approveTxHash + ' - Approval tx confirmed';
-		} catch (e: string) {
-			error = e;
-			console.error('Error approving token:', e);
-		} finally {
-			loading.set(false);
+	function updateTheme() {
+		if (theme === 'system') {
+			resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+		} else {
+			resolvedTheme = theme;
 		}
+		document.documentElement.setAttribute('data-theme', resolvedTheme);
+		localStorage.setItem('theme', theme);
 	}
+
+	const skillCategories = [
+		{
+			name: 'Frontend',
+			icon: '⚡',
+			skills: ['Svelte', 'SvelteKit', 'TypeScript', 'TailwindCSS', 'Vercel']
+		},
+		{
+			name: 'Backend & Web3',
+			icon: '🔗',
+			skills: ['Supabase', 'Python', 'Solidity', 'Web3.js', 'MongoDB']
+		},
+		{
+			name: 'Creative',
+			icon: '🎨',
+			skills: ['Photoshop', 'Illustrator', 'After Effects', 'Blender', 'Premiere Pro']
+		}
+	];
+
+	const emailSubject = encodeURIComponent("Let's work together!");
+	const emailBody = encodeURIComponent(
+		'Hi Varun,\n\nI came across your portfolio and would love to discuss a potential project.\n\nBest regards'
+	);
 </script>
 
-<h2 class="text-bold pt-10 text-center text-5xl">Sveltekit X Skeleton X Reown X Ethers v6</h2>
-<div class="m-10 grid grid-cols-1 gap-8 sm:grid-cols-2">
-	<section class=" max-h-96 overflow-auto rounded-lg p-6 shadow-md sm:col-span-2">
-		<h2 class="mb-6 text-center text-xl font-bold">Reown (formerly WalletConnect) Store Data</h2>
-	</section>
-	<section class=" max-h-72 overflow-auto rounded-lg p-6 shadow-md">
-		<h2 class="mb-3 border-b pb-1 text-lg font-semibold">useAppKitAccount()</h2>
-		<pre class="whitespace-pre-wrap break-words font-mono text-sm">{JSON.stringify(
-				$accountState,
-				null,
-				2
-			)}</pre>
-	</section>
+<section
+	id="home"
+	class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 pb-12 sm:px-6"
+>
+	<div
+		class="absolute inset-0 bg-[linear-gradient(rgba(128,128,128,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(128,128,128,0.03)_1px,transparent_1px)] bg-[size:60px_60px]"
+	></div>
 
-	<section class=" max-h-72 overflow-auto rounded-lg p-6 shadow-md">
-		<h2 class="mb-3 border-b pb-1 text-lg font-semibold">useAppKitNetwork()</h2>
-		<pre class="whitespace-pre-wrap break-words font-mono text-sm">{JSON.stringify(
-				$networkState,
-				null,
-				2
-			)}</pre>
-	</section>
-
-	<section class=" max-h-72 overflow-auto rounded-lg p-6 shadow-md">
-		<h2 class="mb-3 border-b pb-1 text-lg font-semibold">useAppKitState()</h2>
-		<pre class="whitespace-pre-wrap break-words font-mono text-sm">{JSON.stringify(
-				$appKitState,
-				null,
-				2
-			)}</pre>
-	</section>
-
-	<section class=" max-h-72 overflow-auto rounded-lg p-6 shadow-md">
-		<h2 class="mb-3 border-b pb-1 text-lg font-semibold">useAppKitEvents()</h2>
-		<pre class="whitespace-pre-wrap break-words font-mono text-sm">{JSON.stringify(
-				$events,
-				null,
-				2
-			)}</pre>
-	</section>
-
-	<section class=" max-h-96 overflow-auto rounded-lg p-6 shadow-md sm:col-span-2">
-		<h2 class="mb-3 border-b pb-1 text-lg font-semibold">useWalletInfo()</h2>
-		<pre class="whitespace-pre-wrap break-words font-mono text-sm">{JSON.stringify(
-				$walletInfo,
-				null,
-				2
-			)}</pre>
-	</section>
-</div>
-
-<div class="m-10 grid grid-cols-4 gap-8">
-	<section class="col-span-4 max-h-96 overflow-auto rounded-lg p-6 shadow-md">
-		<h2 class="mb-6 text-center text-xl font-bold">Ethers@V6 read — USDC Contract</h2>
-		<dl class="grid grid-cols-4 gap-4 text-sm">
-			{#each [{ label: 'Name', value: $name }, { label: 'Symbol', value: $symbol }, { label: 'Decimals', value: $decimals }, { label: 'Total Supply', value: $totalSupply }] as item}
-				<div class="col-span-1">
-					<dt class="font-semibold">{item.label}</dt>
-					<dd>{item.value ?? 'Loading...'}</dd>
+	<div class="relative z-10 w-full max-w-4xl">
+		<div class="grid items-center gap-8 md:grid-cols-2 md:gap-12">
+			<div class="float order-1 flex justify-center md:order-2">
+				<div class="group relative">
+					<div
+						class="absolute -inset-1 rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 opacity-50 blur-md transition-opacity group-hover:opacity-75"
+					></div>
+					<div
+						class="relative h-48 w-48 overflow-hidden rounded-full border-2 sm:h-56 sm:w-56 md:h-64 md:w-64 lg:h-72 lg:w-72"
+						style="border-color: var(--border-color);"
+					>
+						<img src="/Dp.webp" alt="Varun Dudeja" class="h-full w-full object-cover" />
+					</div>
+					<div
+						class="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full border px-3 py-1 sm:px-4 sm:py-1.5"
+						style="background-color: var(--bg-primary); border-color: var(--accent);"
+					>
+						<span class="flex items-center gap-2 font-mono text-xs">
+							<span class="h-2 w-2 animate-pulse rounded-full bg-green-500"></span>
+							<span style="color: var(--text-secondary);">Available</span>
+						</span>
+					</div>
 				</div>
-			{/each}
-		</dl>
-	</section>
-</div>
-
-<div class="m-10">
-	<section class="rounded-lg p-6 shadow-md">
-		<h2 class="mb-6 text-center text-xl font-bold">Ethers@V6 write — Approve USDC</h2>
-
-		<div class="grid grid-cols-5 items-end gap-4 text-sm">
-			<div class="col-span-2">
-				<label class="mb-1 block font-semibold">Spender</label>
-				<input
-					bind:value={$accountState.address}
-					class="w-full rounded border p-2"
-					placeholder="0x..."
-				/>
 			</div>
-			<div class="col-span-1">
-				<label class="mb-1 block font-semibold">Amount</label>
-				<input
-					bind:value={approvalAmount}
-					class="w-full rounded border p-2"
-					placeholder="e.g. 100"
-				/>
-			</div>
-			<div class="col-span-2">
-				<button
-					class="mt-5 w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-					on:click={approveToken}
-					disabled={approveLoading}
+
+			<div class="order-2 text-center md:order-1 md:text-left">
+				<p
+					class="mb-3 font-mono text-xs tracking-wider sm:mb-4 sm:text-sm"
+					style="color: var(--accent);"
 				>
-					{#if approveLoading}
-						Approving...
-					{:else}
-						Approve USDC
-					{/if}
-				</button>
+					// HELLO WORLD
+				</p>
+				<h1
+					class="mb-3 text-4xl font-bold leading-tight sm:mb-4 sm:text-5xl md:text-6xl"
+					style="color: var(--text-primary);"
+				>
+					I'm <span class="gradient-text">Varun</span>
+				</h1>
+				<p
+					class="glitch mb-4 text-xl sm:mb-6 sm:text-2xl md:text-3xl"
+					style="color: var(--text-secondary);"
+					data-text="Web Developer"
+				>
+					Web Developer<span class="terminal-cursor"></span>
+				</p>
+				<p
+					class="mb-6 text-base leading-relaxed sm:mb-8 sm:text-lg"
+					style="color: var(--text-muted);"
+				>
+					Full-stack developer & creative. Building with
+					<span style="color: var(--accent-secondary);">Svelte</span>,
+					<span style="color: var(--accent);">Web3</span>, and
+					<span class="text-pink-400">pixels</span>.
+				</p>
+				<div
+					class="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4 md:justify-start"
+				>
+					<div class="wallet-connect-wrapper w-full sm:w-auto">
+						<WalletConnect isInNav={false} />
+					</div>
+					<a
+						href="#skills"
+						class="w-full rounded-lg border px-6 py-3 text-center font-medium transition-all sm:w-auto"
+						style="border-color: var(--border-color); color: var(--text-secondary);"
+					>
+						See Skills
+					</a>
+				</div>
 			</div>
 		</div>
-
-		{#if approveTxHash}
-			<p class="mt-4 text-green-600">Transaction sent: {approveTxHash}</p>
-		{/if}
-		{#if error && error.trim() !== ''}
-			<p class="col-span-5 mt-4 text-red-600">Error: {error}</p>
-		{/if}
-	</section>
-</div>
-
-<div class="m-10">
-	<section class="rounded-lg p-6 shadow-md">
-		<h2 class="mb-6 text-center text-xl font-bold">Technology Stack Docs</h2>
-	</section>
-	<div class="grid grid-cols-4 items-end gap-4 text-sm">
-		<a href="https://svelte.dev/docs/kit/introduction" target="_blank" rel="noopener">
-			<button type="button" class="preset-filled btn w-full">SvelteKit v2</button>
-		</a>
-		<a href="https://www.skeleton.dev/docs/get-started/introduction" target="_blank" rel="noopener">
-			<button type="button" class="preset-filled btn w-full">Skeleton v3</button>
-		</a>
-		<a href="https://docs.reown.com/appkit/svelte/core/installation" target="_blank" rel="noopener">
-			<button type="button" class="preset-filled btn w-full">Reown v1</button>
-		</a>
-		<a href="https://docs.ethers.org/v6/" target="_blank" rel="noopener">
-			<button type="button" class="preset-filled btn w-full">Ethers v6</button>
-		</a>
 	</div>
-</div>
+</section>
+
+<section id="about" class="relative px-4 py-16 sm:px-6 sm:py-24 md:py-32">
+	<div class="mx-auto max-w-3xl">
+		<p class="mb-2 font-mono text-xs sm:text-sm" style="color: var(--accent);">01.</p>
+		<h2 class="mb-6 text-2xl font-bold sm:mb-8 sm:text-3xl" style="color: var(--text-primary);">
+			About <span style="color: var(--text-muted);">me</span>
+		</h2>
+		<div class="grid gap-8 md:grid-cols-[2fr_1fr] md:gap-12">
+			<div
+				class="space-y-4 text-base leading-relaxed sm:space-y-6 sm:text-lg"
+				style="color: var(--text-secondary);"
+			>
+				<p>
+					I bridge the gap between <span style="color: var(--text-primary);"
+						>code and creativity</span
+					>. From crafting sleek frontends with Svelte to diving into Web3 smart contracts, I bring
+					ideas to life across the entire stack.
+				</p>
+				<p>
+					When I'm not coding, you'll find me pushing pixels in After Effects or building 3D worlds
+					in Blender. <span style="color: var(--accent);"
+						>The best products happen when technical skill meets artistic vision.</span
+					>
+				</p>
+			</div>
+			<div class="space-y-4">
+				<div class="code-block rounded-lg p-3 font-mono text-xs sm:p-4">
+					<p style="color: var(--text-muted);">// Quick stats</p>
+					<p style="color: var(--text-secondary);" class="mt-2">
+						stack: <span style="color: var(--accent);">full</span>
+					</p>
+					<p style="color: var(--text-secondary);">
+						creative: <span style="color: var(--accent-secondary);">true</span>
+					</p>
+					<p style="color: var(--text-secondary);">
+						web3: <span class="text-green-400">enabled</span>
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section
+	id="skills"
+	class="px-4 py-16 sm:px-6 sm:py-24 md:py-32"
+	style="background-color: var(--bg-tertiary);"
+>
+	<div class="mx-auto max-w-4xl">
+		<p class="mb-2 font-mono text-xs sm:text-sm" style="color: var(--accent);">02.</p>
+		<h2 class="mb-8 text-2xl font-bold sm:mb-12 sm:text-3xl" style="color: var(--text-primary);">
+			Tools I <span style="color: var(--text-muted);">wield</span>
+		</h2>
+
+		<div class="grid gap-6 sm:grid-cols-2 sm:gap-8 md:grid-cols-3">
+			{#each skillCategories as category}
+				<div class="group">
+					<div class="mb-4 flex items-center gap-2">
+						<span class="text-xl">{category.icon}</span>
+						<h3 class="text-lg font-semibold" style="color: var(--text-primary);">
+							{category.name}
+						</h3>
+					</div>
+					<div class="space-y-2">
+						{#each category.skills as skill}
+							<div class="skill-card flex items-center justify-between rounded-lg border px-4 py-3">
+								<span class="text-sm" style="color: var(--text-secondary);">{skill}</span>
+								<span class="font-mono text-xs" style="color: var(--accent);">✓</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<section id="contact" class="px-4 py-16 sm:px-6 sm:py-24 md:py-32">
+	<div class="mx-auto max-w-3xl">
+		<p class="mb-2 font-mono text-xs sm:text-sm" style="color: var(--accent);">03.</p>
+		<h2 class="mb-4 text-2xl font-bold sm:mb-6 sm:text-3xl" style="color: var(--text-primary);">
+			Let's <span class="gradient-text">connect</span>
+		</h2>
+		<p class="mb-8 max-w-xl text-base sm:mb-10 sm:text-lg" style="color: var(--text-secondary);">
+			Got a project that needs that extra something? Whether it's a web app, smart contract, or
+			creative work—let's build something amazing.
+		</p>
+
+		<div class="flex flex-wrap items-center gap-4 sm:gap-6">
+			<a
+				href="mailto:varundudeja95@gmail.com?subject={emailSubject}&body={emailBody}"
+				class="group inline-flex w-full items-center gap-3 rounded-xl border bg-gradient-to-r from-cyan-500/10 to-purple-500/10 px-4 py-3 transition-all hover:scale-105 sm:w-auto sm:px-6 sm:py-4"
+				style="border-color: var(--accent);"
+				onclick={triggerConfetti}
+			>
+				<span class="text-xl sm:text-2xl">📧</span>
+				<div class="min-w-0 text-left">
+					<p class="text-xs uppercase tracking-wider" style="color: var(--text-muted);">Email me</p>
+					<p
+						class="break-all font-mono text-xs transition-colors sm:text-sm"
+						style="color: var(--accent);"
+					>
+						varundudeja95@gmail.com
+					</p>
+				</div>
+			</a>
+		</div>
+
+		<div class="mt-8 flex flex-wrap items-center gap-3 sm:mt-12 sm:gap-4">
+			<span class="font-mono text-xs sm:text-sm" style="color: var(--text-muted);">find_me_on:</span
+			>
+			<a
+				href="https://github.com/vdud"
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label="GitHub"
+				class="flex items-center justify-center rounded-lg p-3 transition-all hover:scale-110"
+				style="color: var(--text-muted);"
+			>
+				<Github size={20} />
+			</a>
+			<a
+				href="https://www.linkedin.com/in/varun-dudeja-3ba254142/"
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label="LinkedIn"
+				class="flex items-center justify-center rounded-lg p-3 transition-all hover:scale-110"
+				style="color: var(--text-muted);"
+			>
+				<Linkedin size={20} />
+			</a>
+			<a
+				href="https://twitter.com/varundudeja96"
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label="Twitter"
+				class="flex items-center justify-center rounded-lg p-3 transition-all hover:scale-110"
+				style="color: var(--text-muted);"
+			>
+				<Twitter size={20} />
+			</a>
+		</div>
+	</div>
+</section>
+
+<footer class="border-t px-4 py-6 sm:px-6 sm:py-8" style="border-color: var(--border-color);">
+	<div
+		class="mx-auto flex max-w-3xl flex-col items-center justify-between gap-2 font-mono text-xs sm:flex-row sm:gap-0"
+		style="color: var(--text-muted);"
+	>
+		<p>© {new Date().getFullYear()} varun.dev</p>
+		<p>Built with Svelte + ☕</p>
+	</div>
+</footer>

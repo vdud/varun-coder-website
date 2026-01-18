@@ -14,8 +14,11 @@
 		"lint": "prettier --check . && eslint ."
 	},
 	"dependencies": {
+		"@lucide/svelte": "^0.562.0",
 		"@reown/appkit": "^1.7.18",
 		"@reown/appkit-adapter-ethers": "^1.7.18",
+		"@reown/appkit-adapter-solana": "^1.8.16",
+		"@reown/appkit-adapter-wagmi": "^1.8.16",
 		"@walletconnect/logger": "2.1.2",
 		"ethers": "6.14.0"
 	},
@@ -30,6 +33,8 @@
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.16",
 		"@tailwindcss/vite": "^4.1.11",
+		"@vercel/analytics": "^1.6.1",
+		"canvas-confetti": "^1.9.4",
 		"eslint": "^9.18.0",
 		"eslint-config-prettier": "^10.0.1",
 		"eslint-plugin-svelte": "^3.0.0",
@@ -50,8 +55,8 @@
 			"esbuild"
 		]
 	},
-		"author": {
-		"name": "Elliott Green",
-		"url": "https://github.com/Elliott-Green/"
+	"author": {
+		"name": "Varun Dudeja",
+		"url": "https://github.com/vdud/"
 	}
 }
